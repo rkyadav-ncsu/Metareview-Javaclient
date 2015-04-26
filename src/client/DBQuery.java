@@ -12,14 +12,15 @@ public class DBQuery {
 	}
 	public static String GetReviewQuery()
 	{
-		String query="select Review.id as ReviewId, '' as submission_txt, Review.map_id as submissionId, "+
+		String query="select Review.id as ReviewId, P.submitted_hyperlinks as submitted_hyperlink, Review.map_id as submissionId, "+
 						" questions.txt as rubric, scores.score, scores.comments as review "+
 						" from responses Review "+
 						" inner join responses Submission on Review.id=Submission.map_id "+
 						" inner join response_maps RM on Review.map_id=RM.reviewed_object_id "+
 						" inner join scores on scores.response_id=Review.id "+
 						" inner join questions on questions.id=scores.question_id "+
-						" where RM.type='FeedbackResponseMap' ";
+						" inner join participants P on P.id=RM.reviewee_id "+
+						" where RM.type='FeedbackResponseMap' and P.submitted_hyperlinks is not null ";
 		return query;
 	}
 

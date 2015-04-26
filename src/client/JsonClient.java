@@ -17,55 +17,77 @@ import org.json.JSONObject;
 
 public class JsonClient {
 
-	public static void main(String[] args) throws JSONException, IOException, ClassNotFoundException, SQLException, InstantiationException, IllegalAccessException 
-	{
+	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		//CallServicePost();
-		//DatabaseConnect();
+		// CallServicePost();
+		// DatabaseConnect();
 		System.out.println("start");
-		DbAdapter dbAdapter=DbAdapter.GetInstance();
-		Review review=Get_Review_Object(dbAdapter.Get_ResultSet(DBQuery.GetReviewQuery()));
-		Update_Hyperlink(review,dbAdapter.Get_ResultSet(DBQuery.GetSubmissionQuery(review.ReviewId)));
-		System.out.println("exit");
-		
+		try {
+			DbAdapter dbAdapter = DbAdapter.GetInstance();
 
-	}
-
-	public static Review Get_Review_Object(ResultSet _resultset) throws SQLException
-	{
-		Review review=new Review();
-		
-		while (_resultset.next()) {
+			Review review = Get_Review_Object(dbAdapter.Get_ResultSet(DBQuery
+					.GetReviewQuery()));
 			
-			review.ReviewId=_resultset.getInt(0);
-			review.ReviewMapId=_resultset.getInt(2);
-			while (review.ReviewId==_resultset.getInt(0))
+			System.out.println(review.SubmissionHyperlink);
+			for(Rubric rubric:review.RubricList)
 			{
-				review.RubricList.add(Rubric.Get_Rubric(_resultset.getString(3), _resultset.getInt(4), _resultset.getString(5)));
-				_resultset.next();
+				System.out.println(rubric.RubricText);
+				System.out.println(rubric.RubricComment);
+				System.out.println("----------");
 			}
+			System.out.println("exit");
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		return review;
+
 	}
-	public static Review Update_Hyperlink(Review review, ResultSet _resultset) throws SQLException
-	{
-		while(_resultset.next())
-		{
-			review.SubmissionHyperlink=_resultset.getString(0);
-		}
-		return review;
-	}
-	public static Review Add_Submission(Review review, ResultSet _resultset)
-	{
+
+	public static Review Get_Review_Object(ResultSet _resultset)
+			throws SQLException {
+		Review review = new Review();
+		if (!_resultset.next())
+			return review;
+
+		review.ReviewId = _resultset.getInt(1);
+		review.ReviewMapId = _resultset.getInt(3);
+		String hyperlink=_resultset.getString(2);
+		hyperlink=hyperlink.substring(hyperlink.indexOf("http"));
+		review.SubmissionHyperlink=hyperlink;
 		
+		while (_resultset.next() && (review.ReviewId == _resultset.getInt(1))) {
+
+			review.RubricList.add(Rubric.Get_Rubric(_resultset.getString(4),
+					_resultset.getInt(5), _resultset.getString(6)));
+			_resultset.next();
+		}
 		return review;
 	}
-	
-	public static void CallServicePost()
+
+	public static Review Update_Hyperlink(Review review, ResultSet _resultset)
 	{
+		try
+		{
+		while (_resultset.next()) {
+			review.SubmissionHyperlink = _resultset.getString(1);
+		}
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+			
+		}
+		return review;
+	}
+
+	public static Review Add_Submission(Review review, ResultSet _resultset) {
+
+		return review;
+	}
+
+	public static void CallServicePost() {
 		// JSONObject json =
-				// readJsonFromUrl("http://localhost:3000/Metareviewgenerator/");
-				// System.out.println(json.toString());
+		// readJsonFromUrl("http://localhost:3000/Metareviewgenerator/");
+		// System.out.println(json.toString());
 		try {
 
 			// web service url
@@ -116,6 +138,7 @@ public class JsonClient {
 
 		}
 	}
+
 	private static String readAll(Reader rd) throws IOException {
 		StringBuilder sb = new StringBuilder();
 		int cp;
@@ -138,12 +161,12 @@ public class JsonClient {
 			is.close();
 		}
 	}
-	
+
 	/*
 	 * 
 	 * 
 	 * 
-end
+	 * end
 	 */
 	public static void DatabaseConnect() throws ClassNotFoundException,
 			InstantiationException, IllegalAccessException, SQLException {
@@ -154,8 +177,8 @@ end
 
 		Statement m_Statement = m_Connection.createStatement();
 
-		//to do create the query to pull review, submission and rubrics
-		String query=DBQuery.GetSubmissionQuery(1);
+		// to do create the query to pull review, submission and rubrics
+		String query = DBQuery.GetSubmissionQuery(1);
 
 		ResultSet m_ResultSet = m_Statement.executeQuery(query);
 
