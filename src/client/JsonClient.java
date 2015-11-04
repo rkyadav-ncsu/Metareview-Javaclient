@@ -11,30 +11,31 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+//import lxml.etree
+//import urllib
+import org.jsoup.select.Elements;
 
 public class JsonClient {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		// CallServicePost();
-		// DatabaseConnect();
 		System.out.println("start");
 		try {
 			DbAdapter dbAdapter = DbAdapter.GetInstance();
-
-			Review review = Get_Review_Object(dbAdapter.Get_ResultSet(DBQuery
-					.GetReviewQuery()));
 			
-			System.out.println(review.SubmissionHyperlink);
-			for(Rubric rubric:review.RubricList)
-			{
-				System.out.println(rubric.RubricText);
-				System.out.println(rubric.RubricComment);
-				System.out.println("----------");
-			}
+			List<Review> listReview = Get_Review_Object(dbAdapter
+					.Get_ResultSet(DBQuery.GetReviewQuery()));
+			System.out.println(listReview.size());
+
+			CallServicePost(listReview);
+
 			System.out.println("exit");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -42,39 +43,59 @@ public class JsonClient {
 
 	}
 
-	public static Review Get_Review_Object(ResultSet _resultset)
-			throws SQLException {
-		Review review = new Review();
+	public static List<Review> Get_Review_Object(ResultSet _resultset)
+			throws SQLException, IOException {
+		List<Review> listReview = new ArrayList<Review>();
 		if (!_resultset.next())
-			return review;
+			return listReview;
+		Review review = new Review();
+		while (_resultset.next()) {
+			if (review.ReviewId == _resultset.getInt(1)) {
+				review.RubricList.add(Rubric.Get_Rubric(
+						_resultset.getString(4), _resultset.getInt(5),
+						_resultset.getString(6)));
+				continue;
+			} else {
+				if (review != null && review.ReviewId != 0)
+					listReview.add(review);
+				review = new Review();
+			}
 
-		review.ReviewId = _resultset.getInt(1);
-		review.ReviewMapId = _resultset.getInt(3);
-		String hyperlink=_resultset.getString(2);
-		hyperlink=hyperlink.substring(hyperlink.indexOf("http"));
-		review.SubmissionHyperlink=hyperlink;
-		
-		while (_resultset.next() && (review.ReviewId == _resultset.getInt(1))) {
+			review.ReviewId = _resultset.getInt(1);
+			review.ReviewMapId = _resultset.getInt(3);
+			String hyperlink = _resultset.getString(2);
+			hyperlink = hyperlink.substring(hyperlink.indexOf("http"));
+			hyperlink = hyperlink.replace("wiki/", "");
+			review.SubmissionHyperlink = hyperlink;
+			Document doc = null;
+			try {
+				doc = Jsoup.connect(hyperlink).get();
+			} catch (Exception e) {
 
-			review.RubricList.add(Rubric.Get_Rubric(_resultset.getString(4),
-					_resultset.getInt(5), _resultset.getString(6)));
-			_resultset.next();
+			}
+			if (doc != null) {
+				Element link = doc.select("body").first();
+				Elements newsHeadlines = doc.select("div[id=bodyContent]>p");
+				String text = newsHeadlines.text();
+				// review.SubmissionText = newsHeadlines.html();
+				review.SubmissionText = text;
+				review.RubricList.add(Rubric.Get_Rubric(
+						_resultset.getString(4), _resultset.getInt(5),
+						_resultset.getString(6)));
+			}
 		}
-		return review;
+		listReview.add(review);
+		return listReview;
 	}
 
-	public static Review Update_Hyperlink(Review review, ResultSet _resultset)
-	{
-		try
-		{
-		while (_resultset.next()) {
-			review.SubmissionHyperlink = _resultset.getString(1);
-		}
-		}
-		catch (SQLException e)
-		{
+	public static Review Update_Hyperlink(Review review, ResultSet _resultset) {
+		try {
+			while (_resultset.next()) {
+				review.SubmissionHyperlink = _resultset.getString(1);
+			}
+		} catch (SQLException e) {
 			e.printStackTrace();
-			
+
 		}
 		return review;
 	}
@@ -84,59 +105,85 @@ public class JsonClient {
 		return review;
 	}
 
-	public static void CallServicePost() {
-		// JSONObject json =
-		// readJsonFromUrl("http://localhost:3000/Metareviewgenerator/");
-		// System.out.println(json.toString());
-		try {
+	public static void CallServicePost(List<Review> listReview) {
+		for (Review review : listReview) {
+			String submission = review.SubmissionText;
+			if(submission==null ||  submission.isEmpty())
+				submission="We are not considering submission text right now.";
+			System.out.println("===============review===========");
+			System.out.println(review.ReviewId);
+			// iterate for each review rubric
+			for (Rubric rubric : review.RubricList) {
+				// String reviewText = review.RubricList.get(0).RubricComment;
+				String reviewText = rubric.RubricComment;
+				String rubricText = rubric.RubricText;
 
-			// web service url
-			URL url = new URL("http://localhost:3000/metareviewgenerator");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setDoOutput(true);
-			conn.setRequestMethod("POST");
-			conn.setRequestProperty("Content-Type", "application/json");
+				// create JSON input for webservice
 
-			// sample inpung
-			String review = "They do were necessary  but some of the points don't really lend themselves to being two sided.  Is phishing bad?";
-			String submission = "They do were necessary  but some of the points don't really lend themselves to being two sided.  Is phishing bad?";
-			String rubric = "describe the organization of the page.";
+				if (reviewText != null && rubricText != null
+						&& submission != null && !reviewText.isEmpty() && !rubricText.isEmpty() && !submission.isEmpty()) {
+					String input = "{\"reviews\":\""
+							+ reviewText
+							+ "\",\"rubric\":\""
+							+ rubricText
+							+ "\",\"submission\":\""
+							+ (submission.length() > 20 ? submission.substring(0, 20) : submission) + "\"}";
 
-			// create JSON input for webservice
-			String input = "{\"reviews\":\"" + review + "\",\"submission\":\""
-					+ submission + "\",\"rubric\":\"" + rubric + "\"}";
+					try {
+						JSONObject jsonObject = GetJsonObject(input);
+						if (jsonObject != null && rubric != null)
+							rubric.UpdateMetareview(jsonObject);
+					} catch (Exception e) {
 
-			OutputStream os = conn.getOutputStream();
-			os.write(input.getBytes());
-			os.flush();
+					} finally {
+						if (rubric.AutomatedMetareview != null) {
+							DbAdapter dbAdapter;
+							try {
+								dbAdapter = DbAdapter.GetInstance();
+								boolean sucess=dbAdapter.InsertQuery(DBQuery.GetInsertMetareviewQuery(review.ReviewId,rubric.RubricText,rubric.RubricScore,rubric.AutomatedMetareview.ToneNegative,rubric.AutomatedMetareview.ToneNeutral,rubric.AutomatedMetareview.TonePositive,rubric.AutomatedMetareview.ContentSummative,rubric.AutomatedMetareview.Quantity,rubric.AutomatedMetareview.ContentAdvisory,rubric.AutomatedMetareview.ContentProblem));
+								if (!sucess)
+									System.out.println("error");
+							} catch (InstantiationException
+									| IllegalAccessException
+									| ClassNotFoundException | SQLException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}							
+						}
 
-			/*
-			 * if (conn.getResponseCode() != HttpURLConnection.HTTP_CREATED) {
-			 * throw new RuntimeException("Failed : HTTP error code : " +
-			 * conn.getResponseCode()); }
-			 */
-
-			JSONObject json;
-			try {
-				BufferedReader br = new BufferedReader(new InputStreamReader(
-						(conn.getInputStream())));
-				String jsonText = readAll(br);
-				json = new JSONObject(jsonText);
-
-			} finally {
-				conn.disconnect();
+					}
+				}
 			}
-			System.out.println(json.toString());
-
-		} catch (MalformedURLException e) {
-
-			e.printStackTrace();
-
-		} catch (IOException e) {
-
-			e.printStackTrace();
 
 		}
+	}
+
+	private static JSONObject GetJsonObject(String inputText)
+			throws IOException {
+		// web service url
+		URL url = new URL("http://localhost:3000/metareviewgenerator/get_quantity");
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		conn.setDoOutput(true);
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("Content-Type", "application/json");
+		OutputStream os = conn.getOutputStream();
+		os.write(inputText.getBytes());
+		os.flush();
+		JSONObject json = null;
+		try {
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					(conn.getInputStream())));
+			String jsonText = readAll(br);
+			System.out.println(inputText);
+			System.out.println(jsonText.toString());
+			System.out.println();
+			json = new JSONObject(jsonText);
+		} catch (Exception e) {
+			// to-do logging
+		}
+		conn.disconnect();
+		return json;
+
 	}
 
 	private static String readAll(Reader rd) throws IOException {
@@ -162,12 +209,6 @@ public class JsonClient {
 		}
 	}
 
-	/*
-	 * 
-	 * 
-	 * 
-	 * end
-	 */
 	public static void DatabaseConnect() throws ClassNotFoundException,
 			InstantiationException, IllegalAccessException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver").newInstance();

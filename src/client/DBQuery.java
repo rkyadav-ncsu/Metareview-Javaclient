@@ -20,8 +20,14 @@ public class DBQuery {
 						" inner join scores on scores.response_id=Review.id "+
 						" inner join questions on questions.id=scores.question_id "+
 						" inner join participants P on P.id=RM.reviewee_id "+
-						" where RM.type='FeedbackResponseMap' and P.submitted_hyperlinks is not null ";
+						" where RM.type='MetareviewResponseMap' and P.submitted_hyperlinks is not null and P.submitted_hyperlinks like '%2013%' and P.submitted_hyperlinks like '%wiki%' and P.submitted_hyperlinks like '%expertiza%' order by Review.id desc limit 10 ";
 		return query;
 	}
+	public static String GetInsertMetareviewQuery(int review_id, String rubric_text, int rubric_score, double tone_negative, double tone_neutral, double tone_positive,double content, double quantity,double content_advisory, double content_problem)
+	{
+		String query="insert into MetareviewResults values ("+ review_id+",'"+rubric_text+"',"+rubric_score+","+tone_negative+","+tone_neutral+","+tone_positive+","+content+","+quantity+","+content_advisory+","+content_problem+")";
+		return query;
+	}
+
 
 }

@@ -10,5 +10,6 @@ public class Review {
 	public int ReviewMapId;
 	public String SubmissionText;
 	public String SubmissionHyperlink;
+
 	
 }

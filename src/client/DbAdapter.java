@@ -26,9 +26,7 @@ public class DbAdapter {
 	private static void get_Connection() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException
 	{
 		//Class.forName("com.mysql.jdbc.Driver").newInstance();
-		 m_Connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/expertiza_development?user=root&password=Expertiza");
-		
-		
+		 m_Connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/Expertiza?user=root&password=Expertiza");
 	}
 	@SuppressWarnings("finally")
 	public ResultSet Get_ResultSet(String query)
@@ -46,6 +44,21 @@ public class DbAdapter {
 		{
 			return m_ResultSet;
 		}
+		
+	}
+	public boolean InsertQuery(String query)
+	{
+		Statement m_Statement;
+		try {
+			m_Statement = m_Connection.createStatement();
+			m_Statement.execute(query);
+			
+			return true;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return false;
 		
 	}
 	
