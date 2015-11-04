@@ -26,7 +26,7 @@ public class DbAdapter {
 	private static void get_Connection() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException
 	{
 		//Class.forName("com.mysql.jdbc.Driver").newInstance();
-		 m_Connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/Expertiza?user=root&password=Expertiza");
+		 m_Connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/Expertiza?user=root&password=root");
 	}
 	@SuppressWarnings("finally")
 	public ResultSet Get_ResultSet(String query)
